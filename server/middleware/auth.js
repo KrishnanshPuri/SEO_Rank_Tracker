@@ -1,29 +1,24 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 const auth = async(req,res,next)=>{
-    const {token} = req.cookies;
-
-    if(!token){
-        return res.json({success:false,message:'Not authorized token failed'});
-    }
-
+   
     try {
-     
+     const authHeader = req.headers.authorization;
+     if(!authHeader || !authHeader.startsWith("Bearer ")){
+         return res.json({success:false,message:'No token'});
+
+     }
+     const token =  authHeader.split(" ")[1];
     const tokenDecoded =   jwt.verify(token,process.env.JWT_SECRET);
 
-    if(tokenDecoded.id){
-        req.body = req.body || {};
-        req.body.userId = tokenDecoded.id;
-    }
-    else{
-          return res.json({success:false,message:'No token Id'});
-    }
+     req.body.userId = tokenDecoded.id;
 
     next();
         
     } catch (error) {
+        console.error("Auth MiddleWare Error: ",error.message )
         res.json({success:false,message:error.message});
     }
 }
 
-export default userAuth;
+export default auth;
