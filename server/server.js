@@ -7,7 +7,11 @@ const app = express();
 
 connectDB()
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Replace with your exact React frontend URL!
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true 
+}));
 app.use(express.json());
 
 app.get('/',(req,res)=>{
