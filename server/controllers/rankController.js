@@ -32,7 +32,7 @@ export const addKeyword = async (req, res) => {
       domain,
       status: "checking"
     });
-
+    
     res.status(201).json({ success: true, message: "Keyword tracking started", tracking });
     runScraper(tracking);
   } catch (error) {
