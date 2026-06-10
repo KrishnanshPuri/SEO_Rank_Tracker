@@ -1,4 +1,4 @@
-import User from "../models/User";
+import User from "../models/User.js";
 import bcrypt from "bcrypt"
 
 const generateToken=(id)=>{
@@ -26,7 +26,7 @@ export const register = async (req, res) => {
         const token = generateToken(user._id);
 
        
-        return res.status(201).json({ success: true, token,user});
+        return res.status(201).json({ success: true,token,user});
 
     } catch (error) {
         console.log('Register Error:',error.message);
