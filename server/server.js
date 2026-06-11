@@ -12,7 +12,7 @@ connectDB()
 app.use(cors({
    origin: [
     "http://localhost:5173", 
-    "https://your-actual-vercel-url.vercel.app" 
+    "https://seo-rank-tracker-six.vercel.app" 
   ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true 
