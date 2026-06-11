@@ -10,7 +10,10 @@ const app = express();
 connectDB()
 
 app.use(cors({
-    origin: 'http://localhost:5173', // Replace with your exact React frontend URL!
+   origin: [
+    "http://localhost:5173", 
+    "https://your-actual-vercel-url.vercel.app" 
+  ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true 
 }));
