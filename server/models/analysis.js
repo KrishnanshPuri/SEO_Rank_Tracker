@@ -1,0 +1,69 @@
+ import mongoose from "mongoose";
+
+const issueSchema =  new mongoose.Schema({
+    severity:{type:String,enum:["critical","warning","info"],required:true},
+    category:{type:String,required:true},
+    message:{type:String,required: true},
+    recommendation:{type:String,required:true}
+},{_id:false})
+
+
+
+ const analysisSchema = new mongoose.Schema({
+    userId: {type:mongoose.Schema.Types.ObjectId,ref:"User",required:true},
+    url:{type:String,default:""},
+    overallScore:{type:Number,min:0,max:100,default:0},
+    catagories:{
+     seo:   {type:Number,default:0},
+     performance:{type:Number,default:0},
+     accessibility:{type:Number,default:0},
+     bestPractices:{type:Number,default:0}
+    },
+    metaData:{
+        title:{type:String,default:""},
+        description:{type:String,default:""},
+        cannonical:{type:String,default:""},
+        robots:{type:String,default:""},
+        ogTitle:{type:String,default:""},
+        ogDescription:{type:String,default:""},
+        ogImage:{type:String,default:""},
+        twitterCard:{type:String,default:""},
+        viewPort:{type:String,default:""},
+        charSet:{type:String,default:""}
+
+    },
+    headings:{
+        h1:{type:Number,default:0},
+        h2:{type:Number,default:0},
+        h3:{type:Number,default:0},
+        h4:{type:Number,default:0},
+        h5:{type:Number,default:0},
+        h6:{type:Number,default:0},
+        h1Texts:[String]
+    },
+    images:{
+        total:{type:Number,default:0},
+        missingAlt:{type:Number,default:0},
+        WithAlt:{type:Number,default:0},
+    },
+    keyWords:[
+        {
+            word: String,
+            count: Number,
+            density:Number
+
+        },
+      
+    ],
+      issues:[issueSchema],
+      loadTime:{type:Number,default:0},
+      pageSize:{type:Number,default:0},
+      wordCount:{type:Number,default:0},
+      status:{type:String,enum:["pending","processing","completed","failed"],default:"pending"}
+ },{timestamps:true});
+
+
+ const Analysis = mongoose.model('Analysis',analysisSchema);
+
+ export default Analysis;
+
