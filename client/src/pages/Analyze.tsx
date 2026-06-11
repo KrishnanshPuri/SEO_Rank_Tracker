@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SearchIcon, GlobeIcon, FileSearchIcon, BrainIcon, CheckCircleIcon, AlertCircle, Loader2, ArrowRightIcon } from "lucide-react";
+import { useApp } from "../context/AppContext.js";
 
 const STEPS = [
     { icon: <GlobeIcon size={22} />, label: "Connecting to browser", desc: "Creating cloud browser session..." },
@@ -12,6 +13,7 @@ const STEPS = [
 ];
 
 export default function Analyze() {
+    const {api} = useApp();
     const [url, setUrl] = useState("");
     const [analyzing, setAnalyzing] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -28,14 +30,60 @@ export default function Analyze() {
         setError("");
         setAnalyzing(true);
         setCurrentStep(0);
+        try {
+            setCurrentStep(0);
 
-        setTimeout(() => setCurrentStep(1), 1000);
-        setTimeout(() => setCurrentStep(2), 3000);
-        setTimeout(() => setCurrentStep(3), 6000);
-        setTimeout(() => {
+            const res = await api.post('/api/analysis/analyze',{url:targetUrl.startsWith('http')? targetUrl: `https://${targetUrl}`,
+
+            })
+
+            if(!res.data.success){
+                throw new Error(res.data.message);
+            }
+
+            const id = res.data.analysisId;
+
+            //scanning
+            setCurrentStep(1)
+
+            // Poll for Completion 
+            let attempts =0;
+            const maxAttempts = 60;
+
+            pollRef.current = setInterval(async ()=>{
+                attempts++;
+                if(attempts>maxAttempts){
+                    if(pollRef.current) clearInterval(pollRef.current);
+                    setError('Analysis is Taking longer tahn expected Check your history Later')
+                    setAnalyzing(false);
+                    return;
+                }
+                
+                try {
+                    const check = await api.get(`api/analysis/${id}`);
+                    const analysis = check.data.analysis;
+
+                    if(analysis.status==="completed"){
+                        if(pollRef.current) clearInterval(pollRef.current);
+                        setCurrentStep(3);
+                        setTimeout(()=>navigate(`/reports/${id}`),1000);
+                    }else if(analysis.status==="failed"){
+                        if(pollRef.current) clearInterval(pollRef.current);
+                        setError("Analysis Failed AI Model might be down");
+                        setAnalyzing(false);
+                    }else{
+                        if(attempts>5) setCurrentStep(2);
+                    }
+                } catch  {
+                    //
+                }
+
+            },2000)
+
+        } catch (error:any) {
+            setError(error.response?.data?.message || error.message || "Failed to Start Analysis");
             setAnalyzing(false);
-            navigate(`/report/id123`);
-        }, 8000);
+        }
     };
 
     const handleSubmit = (e: React.SubmitEvent) => {

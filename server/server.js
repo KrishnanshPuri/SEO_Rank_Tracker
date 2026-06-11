@@ -24,7 +24,7 @@ app.use('/api/auth',authRouter)
 
 app.use('/api/rank',rankRouter);
 
-app.use('/api/analysis',analysisRouter)
+app.use('/api/analysis',analysisRouter);
 
 const PORT = process.env.PORT || 4000 
 
