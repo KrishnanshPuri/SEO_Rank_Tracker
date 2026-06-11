@@ -30,7 +30,7 @@ export default function App() {
                 <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/analyze" element={<Analyze />} />
-                    <Route path="/report/:id" element={<Report />} />
+                    <Route path="/reports/:id" element={<Report />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/rank-tracker" element={<RankTracker />} />
                     <Route path="/rank/:id" element={<RankDetail />} />

@@ -65,7 +65,7 @@ export default function Report() {
 
     const fetchAnalysis = async () => {
        try {
-        const res = await api.get(`api/analysis/${id}`);
+        const res = await api.get(`/api/analysis/${id}`);
         if(res.data.success){
             if(res.data.analysis.status==="processing"){
                 setTimeout(fetchAnalysis,2000);

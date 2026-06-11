@@ -1,100 +1,123 @@
-import axios from "axios";
-import * as cheerio from "cheerio";
+import { chromium } from "playwright-core";
+import Browserbase from "@browserbasehq/sdk";
+
+// Initialize Browserbase with your API key from .env
+const bb = new Browserbase({
+  apiKey: process.env.BROWSERBASE_API_KEY,
+});
 
 export async function scrapeUrl(url) {
+  let browser;
   try {
-    const t = Date.now();
-   const res = await axios.get(url, { 
-  timeout: 15000,
-  headers: {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0"
-  }
-});
-    const statusCode = res.status; 
-    const $ = cheerio.load(res.data);
+    // 1. Create a remote browser session with ad-blocking enabled
+    const session = await bb.sessions.create({ browserSettings: { blockAds: true } });
+    browser = await chromium.connectOverCDP(session.connectUrl);
+    const defaultContext = browser.contexts()[0];
+    const page = defaultContext.pages()[0];
+    page.setDefaultNavigationTimeout(30000);
 
-    const getMeta = (n) => 
-      $(`meta[name="${n}"]`).attr("content") || 
-      $(`meta[property="${n}"]`).attr("content") || 
-      "";
+    const startTime = Date.now();
+    let response;
 
-   
-    let internalLinks = 0;
-    let externalLinks = 0;
-    let totalLinks = 0;
-    const currentHost = new URL(url).hostname;
+    try {
+      // 2. Navigate to the URL and wait for the DOM to load
+      response = await page.goto(url, { waitUntil: "domcontentloaded" });
+    } catch (navError) {
+      await browser.close().catch(() => {});
+      browser = null;
+      return { success: false, error: navError.message };
+    }
 
-    $("a[href]").each((_, el) => {
-      totalLinks++;
-      try {
-        const href = $(el).attr("href");
-        if (!href || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) return;
-        const linkUrl = new URL(href, url); 
-        if (linkUrl.hostname === currentHost) internalLinks++;
-        else externalLinks++;
-      } catch (e) {}
+    const loadTime = Date.now() - startTime;
+    await page.waitForTimeout(2000); // Give React/SPA sites 2 seconds to render
+
+    // 3. Extract all SEO-relevant data directly inside the remote browser
+    const scrapedData = await page.evaluate(() => {
+      const getMeta = (name) => {
+        const el = document.querySelector(`meta[name="${name}"]`) || document.querySelector(`meta[property="${name}"]`);
+        return el ? el.getAttribute("content") || "" : "";
+      };
+
+      const title = document.title || "";
+      const description = getMeta("description");
+      const canonical = document.querySelector('link[rel="canonical"]')?.href || "";
+      const robots = getMeta("robots");
+      const ogTitle = getMeta("og:title");
+      const ogDescription = getMeta("og:description");
+      const ogImage = getMeta("og:image");
+      const twitterCard = getMeta("twitter:card");
+      const viewport = getMeta("viewport");
+      const charsetMeta = document.querySelector('meta[charset]');
+      const charset = charsetMeta ? charsetMeta.getAttribute("charset") || "" : "";
+
+      const h1Elements = document.querySelectorAll("h1");
+      const h1Texts = Array.from(h1Elements).map((el) => el.textContent?.trim() || "");
+      
+      const headings = {
+        h1: document.querySelectorAll("h1").length,
+        h2: document.querySelectorAll("h2").length,
+        h3: document.querySelectorAll("h3").length,
+        h4: document.querySelectorAll("h4").length,
+        h5: document.querySelectorAll("h5").length,
+        h6: document.querySelectorAll("h6").length,
+        h1Texts,
+      };
+
+      const allLinks = Array.from(document.querySelectorAll("a[href]"));
+      const currentHost = window.location.hostname;
+      let internalLinks = 0;
+      let externalLinks = 0;
+
+      allLinks.forEach((link) => {
+        try {
+          const href = link.href;
+          if (href.startsWith("mailto:") || href.startsWith("tel:")) return;
+          const linkUrl = new URL(href);
+          if (linkUrl.hostname === currentHost) internalLinks++;
+          else externalLinks++;
+        } catch (error) {
+          // Ignore malformed links
+        }
+      });
+
+      const allImages = Array.from(document.querySelectorAll("img"));
+      const missingAlt = allImages.filter((img) => !img.alt || img.alt.trim() === "").length;
+
+      const bodyText = document.body?.innerText || "";
+      const wordCount = bodyText.split(/\s+/).filter((w) => w.length > 0).length;
+      const pageSize = document.documentElement.outerHTML.length;
+
+      return {
+        metaData: { title, description, canonical, robots, ogTitle, ogDescription, ogImage, twitterCard, viewport, charset },
+        headings,
+        links: { internal: internalLinks, external: externalLinks, total: allLinks.length },
+        images: { total: allImages.length, missingAlt, withAlt: allImages.length - missingAlt },
+        wordCount,
+        pageSize,
+        bodyText: bodyText.substring(0, 3000), // Truncate to save DB space and AI tokens
+      };
     });
 
-   
-    const rawBodyText = $("body").text() || "";
-    const wordCount = rawBodyText.split(/\s+/).filter(w => w.length > 0).length;
-    const bodyText = rawBodyText.substring(0, 3000);
+    const statusCode = response?.status() || 0;
+    
+    // 4. Clean up the remote browser
+    await page.close();
+    await browser.close();
 
-    const data = {
-      metaData: {
-        title: $("title").text().trim() || "",
-        description: getMeta("description"),
-        canonical: $('link[rel="canonical"]').attr("href") || "",
-        robots: getMeta("robots"),
-        ogTitle: getMeta("og:title"),
-        ogDescription: getMeta("og:description"),
-        ogImage: getMeta("og:image"),
-        twitterCard: getMeta("twitter:card"),
-        viewPort: getMeta("viewport"),
-        charSet: $("meta[charset]").attr("charset") || ""
-      },
-      headings: {
-        h1: $("h1").length,
-        h2: $("h2").length,
-        h3: $("h3").length,
-        h4: $("h4").length,
-        h5: $("h5").length,
-        h6: $("h6").length,
-        h1Texts: $("h1").map((_, e) => $(e).text().trim()).get()
-      },
-      links: {
-        internal: internalLinks,
-        external: externalLinks,
-        total: totalLinks
-      },
-      images: {
-        total: $("img").length,
-        missingAlt: $("img:not([alt]), img[alt='']").length,
-        WithAlt: $("img[alt][alt!='']").length
-      },
-      wordCount,
-      pageSize: Buffer.byteLength(res.data, "utf8"),
-      bodyText,
-      loadTime: Date.now() - t,
-      statusCode,
-      url
+    return {
+      success: true,
+      data: { ...scrapedData, loadTime, statusCode, url },
     };
 
-    return { success: true, data };
-    
-  } catch (err) {
-    console.error("Scraping failed:", err.message);
-    const statusCode = err.response ? err.response.status : 0;
-    return { success: false, error: err.message, data: { statusCode, url } };
+  } catch (error) {
+    console.error("[SCRAPER] Playwright session failed:", error.message);
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error("[SCRAPER] Browser close failed:", closeError.message);
+      }
+    }
+    return { success: false, error: error.message };
   }
 }

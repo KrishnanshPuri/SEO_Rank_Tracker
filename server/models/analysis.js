@@ -13,7 +13,7 @@ const issueSchema =  new mongoose.Schema({
     userId: {type:mongoose.Schema.Types.ObjectId,ref:"User",required:true},
     url:{type:String,default:""},
     overallScore:{type:Number,min:0,max:100,default:0},
-    catagories:{
+    categories:{
      seo:   {type:Number,default:0},
      performance:{type:Number,default:0},
      accessibility:{type:Number,default:0},
@@ -41,12 +41,17 @@ const issueSchema =  new mongoose.Schema({
         h6:{type:Number,default:0},
         h1Texts:[String]
     },
+    links: {
+        total: { type: Number, default: 0 },
+        missingAlt: { type: Number, default: 0 },
+        withAlt: { type: Number, default: 0 }
+    },
     images:{
         total:{type:Number,default:0},
         missingAlt:{type:Number,default:0},
         WithAlt:{type:Number,default:0},
     },
-    keyWords:[
+    keywords:[
         {
             word: String,
             count: Number,

@@ -110,7 +110,7 @@ Provide 5-15 issues sorted by severity (critical first). Be specific and actiona
 Extract top 10 keywords by frequency from the page content.`;
 
     const m = ai.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+     model: 'gemma-4-31b-it',
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema
