@@ -15,8 +15,8 @@ interface AppContextType{
     token:string|null;
     loading: boolean;
     api:AxiosInstance;
-    login:(email:string,password:string)=> Promise<{success:boolean,message:string}>
-    register:(name:string,email:string,password:string)=> Promise<{success:boolean,message:string}>
+    login:(email:string,password:string)=> Promise<{success:boolean,message?:string}>
+    register:(name:string,email:string,password:string)=> Promise<{success:boolean,message?:string}>
     logout: ()=>void;
 }
 
