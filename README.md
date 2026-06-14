@@ -173,6 +173,7 @@ JWT_SECRET=your_secret
 JWT_EXPIRES_IN=7d
 SERP_API_KEY=your_serp_api_key
 GEMINI_API_KEY=your_gemini_api_key
+BROWSERBASE_API_KEY=your_browserbase_api_key
 PORT=5000
 ```
 
